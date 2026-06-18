@@ -27,14 +27,15 @@ export const ProductGrid2x2: React.FC<{ node: SDUINode }> = React.memo(
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
-    paddingHorizontal: 8,
+    alignSelf: "stretch", // Fixes squished grids
+    marginVertical: 10,
+    paddingHorizontal: 10,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 8,
-    marginLeft: 4,
+    marginLeft: 6,
     color: "#333",
   },
   grid: {
@@ -44,5 +45,6 @@ const styles = StyleSheet.create({
   },
   gridItem: {
     width: "50%",
+    padding: 2,
   },
 });

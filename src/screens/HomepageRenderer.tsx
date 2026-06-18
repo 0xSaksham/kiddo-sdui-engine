@@ -5,23 +5,28 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  SafeAreaView,
+  Dimensions,
+  ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useCampaignStore, CampaignContextType } from "../state/campaignStore";
 import { useCartStore } from "../state/cartStore";
 import { getSDUIPayload } from "../mocks/sduiPayload";
 import { ThemeProvider } from "../context/ThemeContext";
 import { sduiComponentRegistry } from "../registry/ComponentRegistry";
-import { BannerHero } from "../components/BannerHero";
-import { ProductGrid2x2 } from "../components/ProductGrid2x2";
-import { DynamicCollection } from "../components/DynamicCollection";
 import { CampaignOverlay } from "../components/CampaignOverlay";
 import { SDUINode } from "../types/sdui.types";
 
-// Register modules dynamically onto scalable factory mapping registry (Avoids brittle switch-case chains)
+// Import and register SDUI components
+import { BannerHero } from "../components/BannerHero";
+import { ProductGrid2x2 } from "../components/ProductGrid2x2";
+import { DynamicCollection } from "../components/DynamicCollection";
+
 sduiComponentRegistry.register("BANNER_HERO", BannerHero);
 sduiComponentRegistry.register("PRODUCT_GRID_2X2", ProductGrid2x2);
 sduiComponentRegistry.register("DYNAMIC_COLLECTION", DynamicCollection);
+
+const { width } = Dimensions.get("window");
 
 export const HomepageRenderer: React.FC = () => {
   const activeCampaign = useCampaignStore((state) => state.activeCampaign);
@@ -30,36 +35,32 @@ export const HomepageRenderer: React.FC = () => {
   );
   const totalCartCount = useCartStore((state) => state.totalCount);
 
-  // Ingest complex schema payload dynamically based on campaign state
   const payload = useMemo(
     () => getSDUIPayload(activeCampaign),
     [activeCampaign],
   );
-
-  // Framerate Optimization: Precise index stability tracking via custom keyExtractor
   const keyExtractor = useCallback(
     (item: SDUINode) => `sdui-node-${item.id}`,
     [],
   );
 
-  // Structural dynamic layout routing
   const renderItem = useCallback(({ item }: { item: SDUINode }) => {
     const Component = sduiComponentRegistry.get(item.type);
-
-    if (!Component) {
-      // System Defensive Resilience: Drop unrecognized layout signatures silently
-      return null;
-    }
-
+    if (!Component) return null;
     return <Component node={item} />;
   }, []);
 
   return (
     <ThemeProvider theme={payload.theme}>
+      {/*
+        Forcing flex: 1 and alignItems: 'stretch' directly onto the Safe Area
+        ensures the container cannot collapse horizontally or vertically.
+      */}
       <SafeAreaView
         style={[styles.root, { backgroundColor: payload.theme.background }]}
+        edges={["top", "bottom"]} // Protects both top status bar and bottom gesture bar
       >
-        {/* Kiddo App Header Block */}
+        {/* Brand Header Block */}
         <View style={styles.header}>
           <Text style={styles.logo}>Kiddo 🧸</Text>
           <View
@@ -72,12 +73,37 @@ export const HomepageRenderer: React.FC = () => {
           </View>
         </View>
 
-        {/* Dynamic Campaign Swapper Context panel (For demonstration and evaluation) */}
+        {/*
+          Core Vertical Scroll Stream.
+          flexGrow: 1 prevents safe-area context collapses [3.1].
+        */}
+        <FlatList
+          data={payload.layout}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          style={styles.list}
+          contentContainerStyle={[styles.listContent, { flexGrow: 1 }]} // Fixes list height collapses [3.1]
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={5}
+          maxToRenderPerBatch={5}
+          windowSize={7}
+          removeClippedSubviews={true}
+        />
+
+        {/*
+          Sticky Bottom Campaign Control Bar (UX Improvement) [3.2]
+          Keeps controls reachable and cleanly separates developers tools from the content [3.2].
+        */}
         <View style={styles.campaignBar}>
           <Text style={styles.campaignBarTitle}>
             Live Campaign Engine Contexts:
           </Text>
-          <View style={styles.buttonRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.scrollView}
+            contentContainerStyle={styles.buttonRow}
+          >
             {(
               [
                 "none",
@@ -92,11 +118,13 @@ export const HomepageRenderer: React.FC = () => {
                   styles.campaignButton,
                   activeCampaign === mode && {
                     backgroundColor: payload.theme.primary,
+                    borderColor: payload.theme.primary,
                   },
                 ]}
                 onPress={() => setActiveCampaign(mode)}
               >
                 <Text
+                  numberOfLines={1}
                   style={[
                     styles.campaignButtonText,
                     activeCampaign === mode && { color: "#FFFFFF" },
@@ -111,24 +139,10 @@ export const HomepageRenderer: React.FC = () => {
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
         </View>
 
-        {/* High Frame-Rate Master Vertical Feed Stream */}
-        <FlatList
-          data={payload.layout}
-          renderItem={renderItem}
-          keyExtractor={keyExtractor}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          // Virtualizer Performance Configurations to preserve High FPS
-          initialNumToRender={5}
-          maxToRenderPerBatch={5}
-          windowSize={7}
-          removeClippedSubviews={true}
-        />
-
-        {/* Full-Screen remote campaign overlay wrapper */}
+        {/* Graphic Campaign Overlay Layer */}
         <CampaignOverlay />
       </SafeAreaView>
     </ThemeProvider>
@@ -138,6 +152,8 @@ export const HomepageRenderer: React.FC = () => {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    alignItems: "stretch",
+    width: width,
   },
   header: {
     flexDirection: "row",
@@ -148,6 +164,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1.5,
     borderColor: "#E2E8F0",
     backgroundColor: "#FFFFFF",
+    width: "100%",
   },
   logo: {
     fontSize: 22,
@@ -166,9 +183,17 @@ const styles = StyleSheet.create({
   },
   campaignBar: {
     backgroundColor: "#FFFFFF",
-    padding: 10,
-    borderBottomWidth: 0.5,
+    paddingTop: 12,
+    paddingBottom: 16, // Extra safe margin for Android/iOS gesture lines
+    paddingHorizontal: 16,
+    borderTopWidth: 1.5,
     borderColor: "#E2E8F0",
+    width: "100%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 10, // Shadow for elevated sticky look on Android
   },
   campaignBarTitle: {
     fontSize: 11,
@@ -177,15 +202,19 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     textTransform: "uppercase",
   },
+  scrollView: {
+    width: "100%",
+  },
   buttonRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    alignItems: "center",
+    paddingRight: 16, // Extra space at the end of the scroll
   },
   campaignButton: {
-    flex: 1,
-    paddingVertical: 6,
-    marginHorizontal: 2,
-    borderRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16, // Natural horizontal padding so words never wrap
+    marginHorizontal: 4,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: "#CBD5E1",
     alignItems: "center",
@@ -195,6 +224,10 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "600",
     color: "#334155",
+  },
+  list: {
+    flex: 1,
+    width: "100%",
   },
   listContent: {
     paddingBottom: 20,

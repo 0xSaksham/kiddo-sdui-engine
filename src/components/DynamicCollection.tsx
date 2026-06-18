@@ -32,9 +32,8 @@ export const DynamicCollection: React.FC<{ node: SDUINode }> = React.memo(
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           showsHorizontalScrollIndicator={false}
-          nestedScrollEnabled={true} // Crucial for Android cross-axis scrolling preservation
+          nestedScrollEnabled={true}
           contentContainerStyle={styles.scrollContainer}
-          // Native Virtualization Performance Keys
           removeClippedSubviews={true}
           initialNumToRender={3}
           maxToRenderPerBatch={3}
@@ -47,19 +46,21 @@ export const DynamicCollection: React.FC<{ node: SDUINode }> = React.memo(
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
+    alignSelf: "stretch", // Fixes squished lists
+    marginVertical: 10,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     color: "#333",
   },
   scrollContainer: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 10,
   },
   cardWrapper: {
-    width: 150,
+    width: 160,
+    marginHorizontal: 4,
   },
 });

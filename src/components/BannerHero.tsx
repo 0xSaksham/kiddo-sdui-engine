@@ -26,12 +26,18 @@ export const BannerHero: React.FC<{ node: SDUINode }> = React.memo(
 
 const styles = StyleSheet.create({
   container: {
-    width: "100%",
+    alignSelf: "stretch", // Fixes horizontal scaling/shrinking
     height: 180,
-    marginVertical: 8,
-    borderRadius: 12,
+    marginVertical: 10,
+    marginHorizontal: 16, // Clean padding on all devices
+    borderRadius: 16,
     overflow: "hidden",
     backgroundColor: "#EAEAEA",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
   },
   banner: {
     width: "100%",
@@ -43,12 +49,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     padding: 12,
   },
   title: {
     color: "#FFFFFF",
     fontWeight: "bold",
-    fontSize: 16,
+    fontSize: 15,
   },
 });
